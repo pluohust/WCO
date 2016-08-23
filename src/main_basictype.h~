@@ -104,6 +104,7 @@ struct CreateThreadInf
 struct WriteAccessInf
 {
     bool Write;
+    bool Read;
     bool Access;
 };
 

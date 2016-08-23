@@ -144,6 +144,7 @@ struct RWVecTime //Frame
 
 struct ThreadVecTime
 {
+    THREADID threadid;
     list<struct RWVecTime>::iterator ListAddress;
     list<struct RWVecTime>::iterator BlockFrame;
     list<struct RWVecTime> VecTimeList;

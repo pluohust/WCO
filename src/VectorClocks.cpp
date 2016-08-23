@@ -42,6 +42,7 @@ void InitThreadVecTime(UINT32 threadID)  //first frame when thread start
     tmpRWVecTime.threadid=threadID;
 
     ThreadVecTime tmpThreadVecTime;
+    tmpThreadVecTime.threadid=threadID;
     (tmpThreadVecTime.VecTimeList).push_back(tmpRWVecTime);
 
     AllThread.insert(pair<UINT32, ThreadVecTime>(threadID, tmpThreadVecTime));
@@ -132,7 +133,7 @@ void AcquiredLockUpdateVC(THREADID threadid, ADDRINT currentlock, ThreadVecTime 
 {
     map<ADDRINT, LockDetailVCInf>::iterator findlockinNew;
     findlockinNew=NewLockInf.find(currentlock);
-    if(findlockinNew==NewLockInf.end())
+    if(findlockinNew==NewLockInf.end()) //第一次获取锁
     {
         LockDetailVCInf ANewLock;
         ANewLock.ComparedFlag=false;
@@ -143,26 +144,28 @@ void AcquiredLockUpdateVC(THREADID threadid, ADDRINT currentlock, ThreadVecTime 
     }
     else
     {
-        if(((findlockinNew->second).threadid==threadid)&&(((TargetThread.ListAddress)->LockAcquired).size()>1)&&CompareVC(threadid,(TargetThread.BlockFrame)->VecTime,((findlockinNew->second).FirstFrame)->VecTime)) //two criticl sections in the same block
+        (findlockinNew->second).ComparedFlag=false;
+        (findlockinNew->second).threadid=threadid; //Update the new lock information
+        (findlockinNew->second).FirstFrame=TargetThread.ListAddress;
+        (findlockinNew->second).LastFrame=TargetThread.ListAddress;
+        ((findlockinNew->second).SharedMemoryAccess).clear();
+//        if(((findlockinNew->second).threadid==threadid)&&(((TargetThread.ListAddress)->LockAcquired).size()>1)&&CompareVC(threadid,(TargetThread.BlockFrame)->VecTime,((findlockinNew->second).FirstFrame)->VecTime)) //two criticl sections in the same block
+        if((findlockinNew->second).threadid==threadid) //在同一个线程里获取锁
         {
-            (findlockinNew->second).ComparedFlag=false;
-            (findlockinNew->second).threadid=threadid;
-            (findlockinNew->second).FirstFrame=TargetThread.ListAddress;
-            (findlockinNew->second).LastFrame=TargetThread.ListAddress;
-            ((findlockinNew->second).SharedMemoryAccess).clear(); //the previous criticl section has compared VC
             return;
         }
-        OldLockInf[currentlock]=findlockinNew->second; //the lastest lock acquired information has not stored in NewLockInf
+        OldLockInf[currentlock]=findlockinNew->second; //将锁信息更新到旧的里面，下面都是新的锁信息
+
         map<ADDRINT, LockDetailVCInf>::iterator findlockinOld;
         map<UINT32, long>::iterator OldLockVC;
         map<UINT32, long>::iterator NewLockVC;
         findlockinOld=OldLockInf.find(currentlock);
-        if(findlockinOld==OldLockInf.end())
+        if(findlockinOld==OldLockInf.end()) //同一个线程，或者第一次
         {
-            ErrorLog<<"AcquiredLockUpdateVC: Connot find the lock: "<<hex<<currentlock<<dec<<endl;
+            ErrorLog<<"Connot find the old lock: "<<hex<<currentlock<<dec<<endl;
             exit(-1);
         }
-        if((TargetThread.LockAcquired).size()>1) //nested lock
+        if((TargetThread.LockAcquired).size()>1) //有嵌套锁，之后需要回溯，所以需要记录
         {
             ((TargetThread.ListAddress)->NestedLock_RecordOldLock)[currentlock]=findlockinOld->second;
         }
@@ -173,7 +176,10 @@ void AcquiredLockUpdateVC(THREADID threadid, ADDRINT currentlock, ThreadVecTime 
                 NewLockVC=((TargetThread.ListAddress)->VecTime).find(OldLockVC->first);
                 if(NewLockVC==((TargetThread.ListAddress)->VecTime).end())
                 {
-                    ((TargetThread.ListAddress)->VecTime)[OldLockVC->first]=OldLockVC->second;
+                    if((findlockinOld->second).threadid==(OldLockVC->first))
+                        ((TargetThread.ListAddress)->VecTime)[OldLockVC->first]=OldLockVC->second+1;
+                    else
+                        ((TargetThread.ListAddress)->VecTime)[OldLockVC->first]=OldLockVC->second;
                 }
                 else
                 {
@@ -190,14 +196,6 @@ void AcquiredLockUpdateVC(THREADID threadid, ADDRINT currentlock, ThreadVecTime 
         
             (findlockinNew->second).ComparedFlag=true;
         }
-        else
-        {
-            (findlockinNew->second).ComparedFlag=false;
-        }
-        (findlockinNew->second).threadid=threadid; //Update the new lock information
-        (findlockinNew->second).FirstFrame=TargetThread.ListAddress;
-        (findlockinNew->second).LastFrame=TargetThread.ListAddress;
-        ((findlockinNew->second).SharedMemoryAccess).clear();
     }
 }
 
@@ -213,28 +211,14 @@ void PerdectNewLockAfterrelease(ADDRINT currentlock, ThreadVecTime &TargetThread
         exit(-1);
     }
     (findlockinNew->second).LastFrame=TargetThread.ListAddress;
-    EndFrame=(findlockinNew->second).LastFrame;
-    EndFrame++;
+    EndFrame=(TargetThread.VecTimeList).end();
 
-/*
-//yanzheng
-list<struct RWVecTime>::iterator tmp;
-LoopFrame=(findlockinNew->second).FirstFrame;
-for(tmp=(TargetThread.VecTimeList).begin();tmp!=(TargetThread.VecTimeList).end();tmp++)
-{
-    if(LoopFrame==tmp)
-        break;
-}
-if(tmp==(TargetThread.VecTimeList).end())
-{
-    cout<<"Error!"<<endl;
-    exit(-1);
-}
-else
-{
-    cout<<"In!"<<endl;
-}
-*/
+//验证
+    if(((findlockinNew->second).FirstFrame)->threadid != TargetThread.threadid)
+    {
+        ErrorLog<<"ReleasedLockUpdateVC: the lock() and unlock() are not in the same thread, the lock is "<<hex<<currentlock<<dec<<endl;
+        exit(-1);
+    }
 
     for(LoopFrame=(findlockinNew->second).FirstFrame;LoopFrame!=EndFrame;LoopFrame++)
     {
@@ -243,6 +227,9 @@ else
         WriteAccessInf TmpSharedLocationAccess;
         for(LoopEachSharedLocation=(LoopFrame->SharedLocation).begin();LoopEachSharedLocation!=(LoopFrame->SharedLocation).end();LoopEachSharedLocation++)
         {
+            TmpSharedLocationAccess.Read=false; //初始化
+            TmpSharedLocationAccess.Write=false;
+        
             map<ADDRINT, WriteAccessInf>::iterator FindSharedLocationInLockInf;
             FindSharedLocationInLockInf=((findlockinNew->second).SharedMemoryAccess).find(LoopEachSharedLocation->first);
             if(FindSharedLocationInLockInf==((findlockinNew->second).SharedMemoryAccess).end())
@@ -283,9 +270,12 @@ else
                 ((findlockinNew->second).SharedMemoryAccess)[LoopEachSharedLocation->first]=TmpSharedLocationAccess;
 //              cout<<"3"<<endl;
             }
-            else if((LoopEachSharedLocation->second).Wstatus)
+            else
             {
-                (FindSharedLocationInLockInf->second).Write=true;
+                if((LoopEachSharedLocation->second).Wstatus)
+                    (FindSharedLocationInLockInf->second).Write=true;
+                if((LoopEachSharedLocation->second).Rstatus)
+                    (FindSharedLocationInLockInf->second).Read=true;
             }
         }
     }
@@ -489,12 +479,15 @@ void UpdateLockInf_ifNested(THREADID threadid, ADDRINT currentlock, ThreadVecTim
         }
         else
         {
-            if(!(findlockinNew->second).ComparedFlag)
+            if(!(findlockinNew->second).ComparedFlag) //两个critical sections暂时没有因果关系
             {
                 if(IsAWriteARead((findlockinNew->second).SharedMemoryAccess,(findlockinOld->second).SharedMemoryAccess))
                 {
                     UpdateFrameVC_basedLock((findlockinOld->second).threadid,((findlockinOld->second).LastFrame)->VecTime,(findlockinNew->second).FirstFrame,(findlockinNew->second).LastFrame);
                     UpdateNestedLockInf((findlockinOld->second).threadid,(findlockinNew->second).FirstFrame,(findlockinNew->second).LastFrame);
+                }
+                else if(IsTwoWrite((findlockinNew->second).SharedMemoryAccess,(findlockinOld->second).SharedMemoryAccess)) //两个W-W，做好记录
+                {
                 }
             }
         }
@@ -503,11 +496,9 @@ void UpdateLockInf_ifNested(THREADID threadid, ADDRINT currentlock, ThreadVecTim
 
 void ReleasedLockUpdateVC(THREADID threadid, ADDRINT currentlock, ThreadVecTime &TargetThread)
 {
-
     PerdectNewLockAfterrelease(currentlock,TargetThread);
 
     UpdateLockInf_ifNested(threadid,currentlock,TargetThread);
-
 }
 
 VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
