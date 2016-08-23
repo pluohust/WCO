@@ -491,7 +491,7 @@ void UpdateLockInf_ifNested(THREADID threadid, ADDRINT currentlock, ThreadVecTim
         {
             if(!(findlockinNew->second).ComparedFlag)
             {
-                if(IsAWriteARead((findlockinNew->second).SharedMemoryAccess,(findlockinOld->second).SharedMemoryAccess))
+                if(IsAWriteAAccess((findlockinNew->second).SharedMemoryAccess,(findlockinOld->second).SharedMemoryAccess))
                 {
                     UpdateFrameVC_basedLock((findlockinOld->second).threadid,((findlockinOld->second).LastFrame)->VecTime,(findlockinNew->second).FirstFrame,(findlockinNew->second).LastFrame);
                     UpdateNestedLockInf((findlockinOld->second).threadid,(findlockinNew->second).FirstFrame,(findlockinNew->second).LastFrame);
