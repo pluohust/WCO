@@ -144,18 +144,24 @@ void AcquiredLockUpdateVC(THREADID threadid, ADDRINT currentlock, ThreadVecTime 
     }
     else
     {
+//        if(((findlockinNew->second).threadid==threadid)&&(((TargetThread.ListAddress)->LockAcquired).size()>1)&&CompareVC(threadid,(TargetThread.BlockFrame)->VecTime,((findlockinNew->second).FirstFrame)->VecTime)) //two criticl sections in the same block
+        if((findlockinNew->second).threadid==threadid) //在同一个线程里获取锁
+        {
+            (findlockinNew->second).ComparedFlag=false;
+            (findlockinNew->second).threadid=threadid; //Update the new lock information
+            (findlockinNew->second).FirstFrame=TargetThread.ListAddress;
+            (findlockinNew->second).LastFrame=TargetThread.ListAddress;
+            ((findlockinNew->second).SharedMemoryAccess).clear();
+            return;
+        }
+        OldLockInf[currentlock]=findlockinNew->second; //将锁信息更新到旧的里面，下面都是新的锁信息
+
         (findlockinNew->second).ComparedFlag=false;
         (findlockinNew->second).threadid=threadid; //Update the new lock information
         (findlockinNew->second).FirstFrame=TargetThread.ListAddress;
         (findlockinNew->second).LastFrame=TargetThread.ListAddress;
         ((findlockinNew->second).SharedMemoryAccess).clear();
-//        if(((findlockinNew->second).threadid==threadid)&&(((TargetThread.ListAddress)->LockAcquired).size()>1)&&CompareVC(threadid,(TargetThread.BlockFrame)->VecTime,((findlockinNew->second).FirstFrame)->VecTime)) //two criticl sections in the same block
-        if((findlockinNew->second).threadid==threadid) //在同一个线程里获取锁
-        {
-            return;
-        }
-        OldLockInf[currentlock]=findlockinNew->second; //将锁信息更新到旧的里面，下面都是新的锁信息
-
+        
         map<ADDRINT, LockDetailVCInf>::iterator findlockinOld;
         map<UINT32, long>::iterator OldLockVC;
         map<UINT32, long>::iterator NewLockVC;
@@ -214,7 +220,7 @@ void PerdectNewLockAfterrelease(ADDRINT currentlock, ThreadVecTime &TargetThread
     EndFrame=(TargetThread.VecTimeList).end();
 
 //验证
-    if(((findlockinNew->second).FirstFrame).threadid != TargetThread.threadid)
+    if(((findlockinNew->second).FirstFrame)->threadid != TargetThread.threadid)
     {
         ErrorLog<<"ReleasedLockUpdateVC: the lock() and unlock() are not in the same thread, the lock is "<<hex<<currentlock<<dec<<endl;
         exit(-1);
@@ -415,6 +421,35 @@ void UpdateNestedLockInf(THREADID threadid, list<struct RWVecTime>::iterator &Fi
     }
 }
 
+void StoreWAddress(set<ADDRINT> &W_address, map<ADDRINT, WriteAccessInf> &AccessFrameOne, map<ADDRINT, WriteAccessInf> &AccessFrameTwo)
+{
+    map<ADDRINT, WriteAccessInf>::iterator ItOne;
+    map<ADDRINT, WriteAccessInf>::iterator ItTwo;
+    
+    for(ItOne=AccessFrameOne.begin();ItOne!=AccessFrameOne.end();ItOne++)
+    {
+        ItTwo=AccessFrameTwo.find(ItOne->first);
+        if(ItTwo!=AccessFrameTwo.end())
+        {
+            if((ItOne->second).Write&&(ItTwo->second).Write)
+            {
+                W_address.insert(ItOne->first);
+            }
+        }
+    }
+}
+
+void StoreWWInf(ADDRINT currentlock, ThreadVecTime &TargetThread, LockDetailVCInf &NewLock, LockDetailVCInf &OldLock) //存储W-W情况信息
+{
+    struct WWRecord WW_Inf_tmp;
+    WW_Inf_tmp.lock=currentlock;
+    StoreWAddress(WW_Inf_tmp.W_address, NewLock.SharedMemoryAccess, OldLock.SharedMemoryAccess);
+    WW_Inf_tmp.Unlock_Frame=OldLock.LastFrame;
+    WW_Inf_tmp.Lock_Frame=NewLock.FirstFrame;
+    
+    (TargetThread.WW_Inf).push(WW_Inf_tmp);
+}
+
 void UpdateLockInf_ifNested(THREADID threadid, ADDRINT currentlock, ThreadVecTime &TargetThread)
 {
     map<ADDRINT, LockDetailVCInf>::iterator findlockinOld;
@@ -488,6 +523,7 @@ void UpdateLockInf_ifNested(THREADID threadid, ADDRINT currentlock, ThreadVecTim
                 }
                 else if(IsTwoWrite((findlockinNew->second).SharedMemoryAccess,(findlockinOld->second).SharedMemoryAccess)) //两个W-W，做好记录
                 {
+                    Imgfile<<"There is a w-w case!"<<endl;
                 }
             }
         }

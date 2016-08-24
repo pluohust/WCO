@@ -142,6 +142,14 @@ struct RWVecTime //Frame
     map<ADDRINT, set<list<struct RWVecTime>::iterator> > W_Flow_Frame; //记录对应的w地址和另一线程的Frame
 };
 
+struct WWRecord
+{
+    ADDRINT lock;
+    set<ADDRINT> W_address;
+    list<struct RWVecTime>::iterator Unlock_Frame;
+    list<struct RWVecTime>::iterator Lock_Frame;
+};
+
 struct ThreadVecTime
 {
     THREADID threadid;
@@ -150,6 +158,6 @@ struct ThreadVecTime
     list<struct RWVecTime> VecTimeList;
     set<ADDRINT> LockAcquired;
 
-    map<ADDRINT, set<list<struct RWVecTime>::iterator> > W_Frame; //记录对应的w地址和Frame
+    queue<struct WWRecord> WW_Inf; //记录对应的w-w情况信息
 };
 #endif

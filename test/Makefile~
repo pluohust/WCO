@@ -1,0 +1,11 @@
+objects=U2L2 U1L1U2L2 NESTED
+
+CPPFLAGS=-lpthread
+
+all: $(objects)
+
+$(objects): % : %.cpp
+	g++ $(CPPFLAGS) $< -o $@
+
+clean:
+	rm -rf *out *log

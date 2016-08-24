@@ -125,7 +125,7 @@ VOID RecordMemRead(VOID * ip, VOID * addr, UINT32 size, THREADID threadid)
     if(IsGlobalVariable((ADDRINT)addr))
     {
         GetOne=(RecordType) {10, threadid, (ADDRINT)addr}; //10 is a magic number to represent a write operation
-//      Testfile<<"10"<<" "<<threadid<<" "<<hex<<(ADDRINT)addr<<dec<<endl;
+        Testfile<<"10"<<" "<<threadid<<" "<<hex<<(ADDRINT)addr<<dec<<endl;
         
         map<ADDRINT, SharedMemoryAccessInf>::iterator mapforsharedmemory;
         map<UINT32, ThreadVecTime>::iterator ITforAllThread;
@@ -169,7 +169,7 @@ VOID RecordMemWrite(VOID * ip, VOID * addr, UINT32 size, THREADID threadid)
     if(IsGlobalVariable((ADDRINT)addr))
     {
         GetOne=(RecordType) {11, threadid, (ADDRINT)addr}; //10 is a magic number to represent a write operation
-//      Testfile<<"11"<<" "<<threadid<<" "<<hex<<(ADDRINT)addr<<dec<<endl;
+        Testfile<<"11"<<" "<<threadid<<" "<<hex<<(ADDRINT)addr<<dec<<endl;
         
         map<ADDRINT, SharedMemoryAccessInf>::iterator mapforsharedmemory;
         map<UINT32, ThreadVecTime>::iterator ITforAllThread;
