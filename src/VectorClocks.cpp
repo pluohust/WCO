@@ -446,8 +446,9 @@ void StoreWWInf(ADDRINT currentlock, ThreadVecTime &TargetThread, LockDetailVCIn
     StoreWAddress(WW_Inf_tmp.W_address, NewLock.SharedMemoryAccess, OldLock.SharedMemoryAccess);
     WW_Inf_tmp.Unlock_Frame=OldLock.LastFrame;
     WW_Inf_tmp.Lock_Frame=NewLock.FirstFrame;
+    WW_Inf_tmp.Last_Frame=NewLock.LastFrame;
     
-    (TargetThread.WW_Inf).push(WW_Inf_tmp);
+    (TargetThread.WW_Inf).push_back(WW_Inf_tmp);
 }
 
 void UpdateLockInf_ifNested(THREADID threadid, ADDRINT currentlock, ThreadVecTime &TargetThread)
@@ -536,6 +537,78 @@ void ReleasedLockUpdateVC(THREADID threadid, ADDRINT currentlock, ThreadVecTime 
     PerdectNewLockAfterrelease(currentlock,TargetThread);
 
     UpdateLockInf_ifNested(threadid,currentlock,TargetThread);
+}
+
+bool Judege_R_In(set<ADDRINT> &W_address, map<ADDRINT, SharedMemoryAccessInf> &SharedLocation)
+{
+    set<ADDRINT>::iterator It_set;
+    map<ADDRINT, SharedMemoryAccessInf>::iterator It_map;
+    
+    for(It_set=W_address.begin(); It_set!=W_address.end() ;It_set++)
+    {
+        It_map=SharedLocation.find(*It_set);
+        if((It_map!=SharedLocation.end()) && (It_map->second).Rstatus)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Judge_WFrame_VC(THREADID threadid, map<UINT32, long> &oldtime, map<UINT32, long> &lasttime)
+{
+    map<UINT32, long>::iterator old, last;
+    
+    old=oldtime.find(threadid);
+    last=lasttime.find(threadid);
+    
+    if((old==oldtime.end()) || (last==lasttime.end()))
+    {
+        ErrorLog<<"Judge_WFrame_VC: VC error!"<<endl;
+        return true;
+    }
+    if((last->second - old->second)>1)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+void WW_R_UpdateVC(ThreadVecTime &TargetThread)
+{
+    list<struct WWRecord>::iterator EachWWInf;
+    bool frame_loop=true;
+    
+    while(!(TargetThread.WW_Inf).empty())
+    {
+        for(EachWWInf=(TargetThread.WW_Inf).begin(); EachWWInf!=(TargetThread.WW_Inf).end(); EachWWInf++)
+        {
+            if((EachWWInf->Last_Frame)==(TargetThread.ListAddress)) //都指向最后一个Frame
+            {
+                return;
+            }
+            if(Judege_R_In(EachWWInf->W_address, (TargetThread.ListAddress)->SharedLocation))
+            {
+                if((EachWWInf->Lock_Frame)->threadid != TargetThread.threadid) //测试
+                {
+                    ErrorLog<<"WW_R_UpdateVC: they are not in the same thread!"<<endl;
+                    exit(-1);
+                }
+                UpdateFrameVC_basedLock(TargetThread.threadid, (EachWWInf->Unlock_Frame)->VecTime, EachWWInf->Lock_Frame, TargetThread.ListAddress);
+            }
+            if(frame_loop && Judge_WFrame_VC(TargetThread.threadid, (EachWWInf->Lock_Frame)->VecTime, (TargetThread.ListAddress)->VecTime))
+            {
+                UpdateFrameVC_basedLock(TargetThread.threadid, (EachWWInf->Unlock_Frame)->VecTime, EachWWInf->Lock_Frame, TargetThread.ListAddress);
+            }
+            else
+            {
+                frame_loop=false;
+            }
+        }
+    }
 }
 
 VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
@@ -652,6 +725,7 @@ VOID ThreadFini(THREADID threadid, const CONTEXT *ctxt, INT32 code, VOID *v)
     }
     
     VectorDetect(GetOne.threadID,ITforAllThread->second);
+//    WW_R_UpdateVC(ITforAllThread->second);
 
     CreateNewFrame(threadid,ITforAllThread->second,"ThreadFini");
 
@@ -683,6 +757,7 @@ VOID BeforePthread_create(THREADID threadid)
     if(((ITforAllThread->second).LockAcquired).empty())
     {
         VectorDetect(GetOne.threadID,ITforAllThread->second);
+        WW_R_UpdateVC(ITforAllThread->second);
     }
 
     CreateNewFrame(threadid,ITforAllThread->second,"ThreadCreate");
@@ -743,6 +818,7 @@ VOID AfterPthread_join(THREADID threadid)
     if(((ITforAllThread->second).LockAcquired).empty())
     {
         VectorDetect(GetOne.threadID,ITforAllThread->second);
+        WW_R_UpdateVC(ITforAllThread->second);
     }
 
     CreateNewFrame(threadid,ITforAllThread->second,"ThreadJoin");
@@ -794,6 +870,7 @@ void JustBeforeLock(ADDRINT currentlock, THREADID threadid)
     if(!((((ITforAllThread->second).VecTimeList).empty()))&&((((ITforAllThread->second).ListAddress)->LockAcquired).empty()))
     {
         VectorDetect(GetOne.threadID,ITforAllThread->second);
+        WW_R_UpdateVC(ITforAllThread->second);
     }
     CreateNewFrame(threadid,ITforAllThread->second,"MutexLock");
     AcquiredLockUpdateVC(threadid,currentlock,ITforAllThread->second);
@@ -907,6 +984,7 @@ VOID BeforePthread_mutex_unlock(ADDRINT currentlock, THREADID threadid)
     if(((ITforAllThread->second).LockAcquired).empty())
     {
         VectorDetect(GetOne.threadID,ITforAllThread->second);
+        WW_R_UpdateVC(ITforAllThread->second);
     }
     
     CreateNewFrame(threadid,ITforAllThread->second,"MutexUnlock");
@@ -960,6 +1038,7 @@ VOID AfterPthread_cond_wait(THREADID threadid)
     if(((ITforAllThread->second).LockAcquired).empty())
     {
         VectorDetect(GetOne.threadID,ITforAllThread->second);
+        WW_R_UpdateVC(ITforAllThread->second);
     }
 
     CreateNewFrame(threadid,ITforAllThread->second,"CondWait");
@@ -1032,6 +1111,7 @@ VOID BeforePthread_cond_signal(ADDRINT cond, THREADID threadid)
     if(((ITforAllThread->second).LockAcquired).empty())
     {
         VectorDetect(GetOne.threadID,ITforAllThread->second);
+        WW_R_UpdateVC(ITforAllThread->second);
     }
 
     CreateNewFrame(threadid,ITforAllThread->second,"CondSignal");
@@ -1065,6 +1145,7 @@ VOID BeforePthread_cond_broadcast(ADDRINT cond, THREADID threadid)
     if(((ITforAllThread->second).LockAcquired).empty())
     {
         VectorDetect(GetOne.threadID,ITforAllThread->second);
+        WW_R_UpdateVC(ITforAllThread->second);
     }
 
     CreateNewFrame(threadid,ITforAllThread->second,"CondBroadcast");

@@ -17,6 +17,9 @@ void *TestThread(void *arg)
 	*p1=2;
 	pthread_mutex_unlock(&L1);
 	cout<<"*p1: "<<*p1<<endl;
+	pthread_mutex_lock(&L1);
+	*p1=2;
+	pthread_mutex_unlock(&L1);
 	return NULL;
 }
 

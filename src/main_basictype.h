@@ -148,6 +148,7 @@ struct WWRecord
     set<ADDRINT> W_address;
     list<struct RWVecTime>::iterator Unlock_Frame;
     list<struct RWVecTime>::iterator Lock_Frame;
+    list<struct RWVecTime>::iterator Last_Frame;
 };
 
 struct ThreadVecTime
@@ -158,6 +159,6 @@ struct ThreadVecTime
     list<struct RWVecTime> VecTimeList;
     set<ADDRINT> LockAcquired;
 
-    queue<struct WWRecord> WW_Inf; //记录对应的w-w情况信息
+    list<struct WWRecord> WW_Inf; //记录对应的w-w情况信息
 };
 #endif
