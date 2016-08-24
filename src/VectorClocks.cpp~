@@ -581,32 +581,38 @@ void WW_R_UpdateVC(ThreadVecTime &TargetThread)
 {
     list<struct WWRecord>::iterator EachWWInf;
     bool frame_loop=true;
-    
-    while(!(TargetThread.WW_Inf).empty())
+
+    for(EachWWInf=(TargetThread.WW_Inf).begin(); EachWWInf!=(TargetThread.WW_Inf).end();)
     {
-        for(EachWWInf=(TargetThread.WW_Inf).begin(); EachWWInf!=(TargetThread.WW_Inf).end(); EachWWInf++)
+        if((EachWWInf->Last_Frame)==(TargetThread.ListAddress)) //都指向最后一个Frame
         {
-            if((EachWWInf->Last_Frame)==(TargetThread.ListAddress)) //都指向最后一个Frame
+            return;
+        }
+        if(Judege_R_In(EachWWInf->W_address, (TargetThread.ListAddress)->SharedLocation))
+        {
+            if((EachWWInf->Lock_Frame)->threadid != TargetThread.threadid) //测试
             {
-                return;
+                ErrorLog<<"WW_R_UpdateVC: they are not in the same thread!"<<endl;
+                exit(-1);
             }
-            if(Judege_R_In(EachWWInf->W_address, (TargetThread.ListAddress)->SharedLocation))
+            UpdateFrameVC_basedLock((EachWWInf->Unlock_Frame)->threadid, (EachWWInf->Unlock_Frame)->VecTime, EachWWInf->Lock_Frame, TargetThread.ListAddress);
+            cout<<"another: "<<(EachWWInf->Unlock_Frame)->threadid<<endl;
+            EachWWInf=(TargetThread.WW_Inf).erase(EachWWInf);
+        }
+        else if(frame_loop && Judge_WFrame_VC(TargetThread.threadid, (EachWWInf->Lock_Frame)->VecTime, (TargetThread.ListAddress)->VecTime))
+        {
+            if((EachWWInf->Lock_Frame)->threadid != TargetThread.threadid) //测试
             {
-                if((EachWWInf->Lock_Frame)->threadid != TargetThread.threadid) //测试
-                {
-                    ErrorLog<<"WW_R_UpdateVC: they are not in the same thread!"<<endl;
-                    exit(-1);
-                }
-                UpdateFrameVC_basedLock(TargetThread.threadid, (EachWWInf->Unlock_Frame)->VecTime, EachWWInf->Lock_Frame, TargetThread.ListAddress);
+                ErrorLog<<"WW_R_UpdateVC: they are not in the same thread!"<<endl;
+                exit(-1);
             }
-            if(frame_loop && Judge_WFrame_VC(TargetThread.threadid, (EachWWInf->Lock_Frame)->VecTime, (TargetThread.ListAddress)->VecTime))
-            {
-                UpdateFrameVC_basedLock(TargetThread.threadid, (EachWWInf->Unlock_Frame)->VecTime, EachWWInf->Lock_Frame, TargetThread.ListAddress);
-            }
-            else
-            {
-                frame_loop=false;
-            }
+            UpdateFrameVC_basedLock(TargetThread.threadid, (EachWWInf->Unlock_Frame)->VecTime, EachWWInf->Lock_Frame, TargetThread.ListAddress);
+            EachWWInf=(TargetThread.WW_Inf).erase(EachWWInf);
+        }
+        else
+        {
+            EachWWInf++;
+            frame_loop=false;
         }
     }
 }
@@ -725,7 +731,7 @@ VOID ThreadFini(THREADID threadid, const CONTEXT *ctxt, INT32 code, VOID *v)
     }
     
     VectorDetect(GetOne.threadID,ITforAllThread->second);
-    WW_R_UpdateVC(ITforAllThread->second);
+//    WW_R_UpdateVC(ITforAllThread->second);
 
     CreateNewFrame(threadid,ITforAllThread->second,"ThreadFini");
 
