@@ -3,6 +3,8 @@
 #include "Output.h"
 #include "Detector.h"
 
+#define CHECK_R 2
+
 /*please forgive my laziness.*/
 extern map<UINT32, ThreadVecTime> AllThread;
 extern map<THREADID, ThreadParent> ThreadMapParent;
@@ -567,7 +569,7 @@ bool Judge_WFrame_VC(THREADID threadid, map<UINT32, long> &oldtime, map<UINT32, 
         ErrorLog<<"Judge_WFrame_VC: VC error!"<<endl;
         return true;
     }
-    if((last->second - old->second)>1)
+    if((last->second - old->second)>CHECK_R)
     {
         return true;
     }
@@ -588,24 +590,26 @@ void WW_R_UpdateVC(ThreadVecTime &TargetThread)
         {
             return;
         }
-        if(Judege_R_In(EachWWInf->W_address, (TargetThread.ListAddress)->SharedLocation))
+        if(Judege_R_In(EachWWInf->W_address, (TargetThread.ListAddress)->SharedLocation)) //后面的Frame有对应的R
         {
             if((EachWWInf->Lock_Frame)->threadid != TargetThread.threadid) //测试
             {
                 ErrorLog<<"WW_R_UpdateVC: they are not in the same thread!"<<endl;
                 exit(-1);
             }
-            UpdateFrameVC_basedLock((EachWWInf->Unlock_Frame)->threadid, (EachWWInf->Unlock_Frame)->VecTime, EachWWInf->Lock_Frame, TargetThread.ListAddress);
+            UpdateFrameVC_basedLock((EachWWInf->Unlock_Frame)->threadid, (EachWWInf->Unlock_Frame)->VecTime, EachWWInf->Lock_Frame, TargetThread.ListAddress); //更新后面Frame的VC
+            UpdateNestedLockInf(TargetThread.threadid, EachWWInf->Lock_Frame, TargetThread.ListAddress); //处理后面嵌套锁问题
             EachWWInf=(TargetThread.WW_Inf).erase(EachWWInf);
         }
-        else if(frame_loop && Judge_WFrame_VC(TargetThread.threadid, (EachWWInf->Lock_Frame)->VecTime, (TargetThread.ListAddress)->VecTime))
+        else if(frame_loop && Judge_WFrame_VC(TargetThread.threadid, (EachWWInf->Lock_Frame)->VecTime, (TargetThread.ListAddress)->VecTime)) //间隔距离
         {
             if((EachWWInf->Lock_Frame)->threadid != TargetThread.threadid) //测试
             {
                 ErrorLog<<"WW_R_UpdateVC: they are not in the same thread!"<<endl;
                 exit(-1);
             }
-            UpdateFrameVC_basedLock(TargetThread.threadid, (EachWWInf->Unlock_Frame)->VecTime, EachWWInf->Lock_Frame, TargetThread.ListAddress);
+            UpdateFrameVC_basedLock(TargetThread.threadid, (EachWWInf->Unlock_Frame)->VecTime, EachWWInf->Lock_Frame, TargetThread.ListAddress); //更新后面Frame的VC
+            UpdateNestedLockInf(TargetThread.threadid, EachWWInf->Lock_Frame, TargetThread.ListAddress); //处理后面嵌套锁问题
             EachWWInf=(TargetThread.WW_Inf).erase(EachWWInf);
         }
         else
