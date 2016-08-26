@@ -1161,7 +1161,7 @@ VOID BeforePthread_cond_broadcast(ADDRINT cond, THREADID threadid)
 
     SignalVecTime[GetOne.object]=((ITforAllThread->second).ListAddress)->VecTime;
 
-    OutPutVecorTime(threadid);
+    OutPutAllVecorTime("Broadcast");
 
     PIN_ReleaseLock(&lock);
 }

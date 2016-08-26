@@ -34,6 +34,7 @@ extern int ThreadNum;
 extern vector<ShareAddreeStruct> MallocVec;
 extern size_t MaxSum;
 extern set<ADDRINT> SynAddress;
+extern int WWNum;
 
 void InitThreadVecTime(UINT32 threadID)  //first frame when thread start
 {
@@ -526,7 +527,7 @@ void UpdateLockInf_ifNested(THREADID threadid, ADDRINT currentlock, ThreadVecTim
                 }
                 else if(IsTwoWrite((findlockinNew->second).SharedMemoryAccess,(findlockinOld->second).SharedMemoryAccess)) //两个W-W，做好记录
                 {
-                    Imgfile<<"There is a w-w case!"<<endl;
+                    WWNum++;
                     StoreWWInf(currentlock, TargetThread, findlockinNew->second, findlockinOld->second);
                 }
             }

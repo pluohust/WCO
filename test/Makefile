@@ -1,4 +1,4 @@
-objects=w-w
+objects=w-w w-w_nest
 
 CPPFLAGS=-lpthread
 

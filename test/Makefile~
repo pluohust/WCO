@@ -1,4 +1,4 @@
-objects=U2L2 U1L1U2L2 NESTED
+objects=w-w
 
 CPPFLAGS=-lpthread
 

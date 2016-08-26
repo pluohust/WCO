@@ -15,6 +15,7 @@ extern int Warnings;
 extern UINT64 ConNumFrames;
 extern UINT64 NumAnalysis;
 extern set<ADDRINT> Race_address;
+extern int WWNum;
 
 void InitFileOutput()
 {
@@ -73,6 +74,8 @@ VOID Fini(INT32 code, VOID *v)
     cout<<"Concurrent Frames: "<<ConNumFrames<<endl;
     Imgfile<<"Race count: "<<Race_address.size()<<endl;
     cout<<"Race count: "<<Race_address.size()<<endl;
+    Imgfile<<"W-W Frames: "<<WWNum<<endl;
+    cout<<"W-W Frames: "<<WWNum<<endl;
     monitorendflag=true;
     OutPutAllVecorTime("Fini");
 }

@@ -42,7 +42,6 @@ int Warnings=0;
 UINT64 ConNumFrames=0; //the count of concurrent frames
 UINT64 NumAnalysis=0; //the count of analysis
 set<ADDRINT> Race_address; //store the race address
-int WWNum=0; //W-W Frame count
 
 vector<ShareAddreeStruct> MallocVec; //store Malloc address
 size_t MaxSum=0; //memory used
