@@ -23,13 +23,13 @@ void OutPutVecorTime(UINT32 threadID) //output Vector Time
     OutPutVectorTime<<endl;
 }
 
-void OutPutAllVecorTime(string SynName) //output all Vector Time
+void OutPutAllVecorTime() //output all Vector Time
 {
     map<UINT32, ThreadVecTime>::iterator ITforallthread;
     list<struct RWVecTime>::iterator ITforlist;
     map<UINT32, long>::iterator tmp1;
     
-    OutPutVectorTime<<endl<<"********************"<<SynName<<"********************"<<endl;
+    OutPutVectorTime<<endl<<"*********************************"<<endl;
     
     for(ITforallthread=AllThread.begin();ITforallthread!=AllThread.end();ITforallthread++)
     {
@@ -44,7 +44,6 @@ void OutPutAllVecorTime(string SynName) //output all Vector Time
             OutPutVectorTime<<endl;
         }
     }
-    OutPutVectorTime<<endl;
 }
 
 void GetMaxMemory() //count memory used

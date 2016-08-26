@@ -697,7 +697,7 @@ VOID ThreadStart(THREADID threadid, CONTEXT *ctxt, INT32 flags, VOID *v)
             (((ITforAllThread->second).ListAddress)->VecTime).insert(pair<UINT32, long>(GetOne.threadID,1));
         }
     }
-    OutPutVecorTime(threadid);
+    OutPutAllVecorTime("ThreadStart");
     
     PIN_ReleaseLock(&lock);
 }
@@ -740,7 +740,7 @@ VOID ThreadFini(THREADID threadid, const CONTEXT *ctxt, INT32 code, VOID *v)
 
     FiniThreadVecTime[GetOne.threadID]=((ITforAllThread->second).ListAddress)->VecTime;
 
-    OutPutVecorTime(threadid);
+    OutPutAllVecorTime("ThreadFini");
 
     PIN_ReleaseLock(&lock);
 }
@@ -784,7 +784,7 @@ VOID BeforePthread_create(THREADID threadid)
         (mapforqueue->second).push(((ITforAllThread->second).ListAddress)->VecTime);
     }
 
-    OutPutVecorTime(threadid);
+    OutPutAllVecorTime("ThreadCreate");
 
     PIN_ReleaseLock(&lock);
 }
@@ -855,7 +855,7 @@ VOID AfterPthread_join(THREADID threadid)
     }
     FiniThreadVecTime.erase((THREADID)(GetOne.object));
 
-    OutPutVecorTime(threadid);
+    OutPutAllVecorTime("ThreadJoin");
 
     PIN_ReleaseLock(&lock);
 }
@@ -888,7 +888,7 @@ void JustBeforeLock(ADDRINT currentlock, THREADID threadid)
         (ITforAllThread->second).BlockFrame=(ITforAllThread->second).ListAddress;
     }
     
-    OutPutVecorTime(threadid);
+    OutPutAllVecorTime("Lock");
 }
 
 VOID BeforePthread_mutex_lock(ADDRINT currentlock, THREADID threadid)
@@ -1003,7 +1003,7 @@ VOID BeforePthread_mutex_unlock(ADDRINT currentlock, THREADID threadid)
         (ITforAllThread->second).BlockFrame=(ITforAllThread->second).ListAddress;
     }
     
-    OutPutVecorTime(threadid);
+    OutPutAllVecorTime("UnLock");
     
     PIN_ReleaseLock(&lock);
 }
@@ -1076,7 +1076,7 @@ VOID AfterPthread_cond_wait(THREADID threadid)
 
 //  SignalVecTime.erase(GetOne.cond);
 
-    OutPutVecorTime(threadid);
+    OutPutAllVecorTime("Wait");
 
     JustBeforeLock(GetOne.mutex, threadid);
 
@@ -1127,7 +1127,7 @@ VOID BeforePthread_cond_signal(ADDRINT cond, THREADID threadid)
 
     SignalVecTime.insert(pair<ADDRINT, map<UINT32, long> >(GetOne.object, ((ITforAllThread->second).ListAddress)->VecTime));
 
-    OutPutVecorTime(threadid);
+    OutPutAllVecorTime("Signal");
 
     PIN_ReleaseLock(&lock);
 }
@@ -1161,7 +1161,7 @@ VOID BeforePthread_cond_broadcast(ADDRINT cond, THREADID threadid)
 
     SignalVecTime[GetOne.object]=((ITforAllThread->second).ListAddress)->VecTime;
 
-    OutPutVecorTime(threadid);
+    OutPutAllVecorTime("Broadcast");
 
     PIN_ReleaseLock(&lock);
 }

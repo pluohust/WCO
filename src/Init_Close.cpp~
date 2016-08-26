@@ -74,5 +74,5 @@ VOID Fini(INT32 code, VOID *v)
     Imgfile<<"Race count: "<<Race_address.size()<<endl;
     cout<<"Race count: "<<Race_address.size()<<endl;
     monitorendflag=true;
-    OutPutAllVecorTime("Fini");
+    OutPutAllVecorTime();
 }
